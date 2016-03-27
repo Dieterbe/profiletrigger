@@ -55,11 +55,11 @@ func (heap Heap) Run() {
 			if err != nil {
 				heap.logError(err)
 			}
+			heap.lastUnix = unix
 			err = f.Close()
 			if err != nil {
 				heap.logError(err)
 			}
-			heap.lastUnix = unix
 		}
 	}
 }
