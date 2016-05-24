@@ -42,6 +42,8 @@ func (cpu Cpu) logError(err error) {
 	}
 }
 
+// Run runs the trigger. encountered errors go to the configured channel (if any).
+// you probably want to run this in a new goroutine.
 func (cpu Cpu) Run() {
 	tick := time.NewTicker(cpu.checkEvery)
 	pid := os.Getpid()

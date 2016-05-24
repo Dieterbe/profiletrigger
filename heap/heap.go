@@ -39,6 +39,8 @@ func (heap Heap) logError(err error) {
 	}
 }
 
+// Run runs the trigger. encountered errors go to the configured channel (if any).
+// you probably want to run this in a new goroutine.
 func (heap Heap) Run() {
 	tick := time.NewTicker(heap.checkEvery)
 	m := &runtime.MemStats{}
