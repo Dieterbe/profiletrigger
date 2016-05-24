@@ -1,6 +1,7 @@
-automatically trigger a profile in your golang (go) application when a condition is matched.
+[![Go Report Card](https://goreportcard.com/badge/github.com/Dieterbe/profiletrigger)](https://goreportcard.com/report/github.com/Dieterbe/profiletrigger)
+[![GoDoc](https://godoc.org/github.com/Dieterbe/profiletrigger?status.svg)](https://godoc.org/github.com/Dieterbe/profiletrigger)
 
-[godoc](http://godoc.org/github.com/Dieterbe/profiletrigger)
+automatically trigger a profile in your golang (go) application when a condition is matched.
 
 # currently implemented:
 
