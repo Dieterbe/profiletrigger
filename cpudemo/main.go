@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"time"
 
@@ -10,21 +9,9 @@ import (
 
 var j int
 
-type Data struct {
-	d    []byte
-	prev *Data
-}
-
-func New(prev *Data, size int) *Data {
-	return &Data{
-		d:    make([]byte, size),
-		prev: prev,
-	}
-}
-
 func cpuUser(dur time.Duration, stopChan chan struct{}) {
 	tick := time.NewTicker(time.Millisecond)
-	fmt.Print("every ms, sleep", dur, "   ")
+	//fmt.Print("every ms, sleep", dur, "   ")
 	for {
 		select {
 		case <-tick.C:

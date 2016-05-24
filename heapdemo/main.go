@@ -8,13 +8,13 @@ import (
 	"github.com/Dieterbe/profiletrigger/heap"
 )
 
-type Data struct {
+type data struct {
 	d    []byte
-	prev *Data
+	prev *data
 }
 
-func New(prev *Data, size int) *Data {
-	return &Data{
+func newData(prev *data, size int) *data {
+	return &data{
 		d:    make([]byte, size),
 		prev: prev,
 	}
@@ -22,9 +22,9 @@ func New(prev *Data, size int) *Data {
 
 // HungryAllocator allocates 1MB every second
 func HungryAllocator() {
-	var prev *Data
+	var prev *data
 	for {
-		n := New(prev, 1000000)
+		n := newData(prev, 1000000)
 		prev = n
 		time.Sleep(time.Duration(1) * time.Second)
 	}
@@ -32,9 +32,9 @@ func HungryAllocator() {
 
 // LightAllocator allocates 100kB every second
 func LightAllocator() {
-	var prev *Data
+	var prev *data
 	for {
-		n := New(prev, 100000)
+		n := newData(prev, 100000)
 		prev = n
 		time.Sleep(time.Duration(1) * time.Second)
 	}
