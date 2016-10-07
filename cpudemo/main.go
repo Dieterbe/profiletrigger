@@ -29,7 +29,7 @@ func cpuUser(dur time.Duration, stopChan chan struct{}) {
 
 func main() {
 	errors := make(chan error)
-	trigger, _ := cpu.New("/tmp/prof", 80, 60, time.Duration(1)*time.Second, time.Duration(2)*time.Second, errors)
+	trigger, _ := cpu.New(".", 80, 60, time.Duration(1)*time.Second, time.Duration(2)*time.Second, errors)
 	go trigger.Run()
 	// gradually build up cpu usage.
 	for i := 1000; i >= 0; i = i - 50 {

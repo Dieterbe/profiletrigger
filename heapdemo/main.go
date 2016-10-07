@@ -41,9 +41,9 @@ func LightAllocator() {
 }
 
 func main() {
-	fmt.Println("allocating 1100 kB every second. should hit the 10MB threshold within 10 seconds..")
+	fmt.Println("allocating 1100 kB every second. should hit the 10MB threshold within 10 seconds.  look for a profile..")
 	errors := make(chan error)
-	trigger, _ := heap.New("/tmp/prof", 10000000, 60, time.Duration(1)*time.Second, errors)
+	trigger, _ := heap.New(".", 10000000, 60, time.Duration(1)*time.Second, errors)
 	go trigger.Run()
 	go HungryAllocator()
 	go LightAllocator()
