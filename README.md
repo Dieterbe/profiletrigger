@@ -5,7 +5,7 @@ automatically trigger a profile in your golang (go) application when a condition
 
 # currently implemented:
 
-* when certain number of bytes allocated, save a heap (memory) profile
+* when process obtains certain number of bytes from the system, save a heap (memory) profile
 * when cpu usage reaches a certain percentage, save a cpu profile.
 
 # demo
