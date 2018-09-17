@@ -6,6 +6,8 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"time"
+
+	"github.com/prometheus/procfs"
 )
 
 // Heap will check every checkEvery for memory obtained from the system, by the process
@@ -14,32 +16,45 @@ import (
 // but no more often than every minTimeDiff seconds
 // any errors will be sent to the errors channel
 type Heap struct {
-	cfg      Config
-	lastUnix int64
-	Errors   chan error
+	cfg           Config
+	lastTriggered time.Time
+	Errors        chan error
+
+	proc *procfs.Proc
 }
 
 // Config is the config for triggering profile
 type Config struct {
-	Path        string
-	Threshold   int
-	MinTimeDiff int
-	CheckEvery  time.Duration
+	Path           string
+	AllocThreshold int
+	RSSThreshold   int
+	MinTimeDiff    time.Duration
+	CheckEvery     time.Duration
 }
 
 // New creates a new Heap trigger. use a nil channel if you don't care about any errors
 func New(cfg Config, errors chan error) (*Heap, error) {
 	heap := Heap{
-		cfg:      cfg,
-		lastUnix: int64(0),
-		Errors:   errors,
+		cfg:           cfg,
+		lastTriggered: time.Now().Add(-cfg.MinTimeDiff),
+		Errors:        errors,
 	}
+	proc, err := procfs.Self()
+	if err != nil {
+		heap.logError(err)
+	} else {
+		heap.proc = &proc
+	}
+
 	return &heap, nil
 }
 
 func (heap Heap) logError(err error) {
 	if heap.Errors != nil {
-		heap.Errors <- err
+		select {
+		case heap.Errors <- err:
+		default:
+		}
 	}
 }
 
@@ -48,12 +63,10 @@ func (heap Heap) logError(err error) {
 func (heap Heap) Run() {
 	cfg := heap.cfg
 	tick := time.NewTicker(cfg.CheckEvery)
-	m := &runtime.MemStats{}
+
 	for ts := range tick.C {
-		runtime.ReadMemStats(m)
-		unix := ts.Unix()
-		if m.Sys >= uint64(cfg.Threshold) && unix >= heap.lastUnix+int64(cfg.MinTimeDiff) {
-			f, err := os.Create(fmt.Sprintf("%s/%d.profile-heap", cfg.Path, unix))
+		if heap.shouldProfile(ts) {
+			f, err := os.Create(fmt.Sprintf("%s/%d.profile-heap", cfg.Path, ts.Unix()))
 			if err != nil {
 				heap.logError(err)
 				continue
@@ -62,11 +75,41 @@ func (heap Heap) Run() {
 			if err != nil {
 				heap.logError(err)
 			}
-			heap.lastUnix = unix
+			heap.lastTriggered = ts
 			err = f.Close()
 			if err != nil {
 				heap.logError(err)
 			}
 		}
 	}
+}
+
+func (heap Heap) shouldProfile(ts time.Time) bool {
+	cfg := heap.cfg
+
+	if ts.Before(heap.lastTriggered.Add(cfg.MinTimeDiff)) {
+		return false
+	}
+
+	// Check RSS.
+	if cfg.RSSThreshold != 0 && heap.proc != nil {
+		stat, err := heap.proc.NewStat()
+		if err != nil {
+			heap.logError(err)
+		} else if stat.ResidentMemory() >= cfg.RSSThreshold {
+			return true
+		}
+	}
+
+	// Check HeapAlloc
+	if cfg.AllocThreshold != 0 {
+		m := &runtime.MemStats{}
+		runtime.ReadMemStats(m)
+
+		if m.HeapAlloc >= uint64(cfg.AllocThreshold) {
+			return true
+		}
+	}
+
+	return false
 }

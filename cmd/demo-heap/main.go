@@ -44,16 +44,16 @@ func main() {
 	fmt.Println("allocating 1100 kB every second. should hit the 10MB threshold within 10 seconds.  look for a profile..")
 	errors := make(chan error)
 	trigger, _ := heap.New(heap.Config{
-		Path:        ".",
-		Threshold:   10000000,
-		MinTimeDiff: 60,
-		CheckEvery:  time.Duration(1) * time.Second,
+		Path:           ".",
+		AllocThreshold: 10000000,
+		MinTimeDiff:    time.Duration(60) * time.Second,
+		CheckEvery:     time.Duration(1) * time.Second,
 	}, errors)
 
 	go trigger.Run()
 	go HungryAllocator()
 	go LightAllocator()
 	for e := range errors {
-		log.Fatal("profiletrigger heap saw error:", e)
+		log.Println("profiletrigger heap saw error:", e)
 	}
 }
