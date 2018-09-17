@@ -14,23 +14,25 @@ import (
 // but no more often than every minTimeDiff seconds
 // any errors will be sent to the errors channel
 type Heap struct {
-	path        string
-	threshold   int
-	minTimeDiff int
-	checkEvery  time.Duration
-	lastUnix    int64
-	Errors      chan error
+	cfg      Config
+	lastUnix int64
+	Errors   chan error
+}
+
+// Config is the config for triggering profile
+type Config struct {
+	Path        string
+	Threshold   int
+	MinTimeDiff int
+	CheckEvery  time.Duration
 }
 
 // New creates a new Heap trigger. use a nil channel if you don't care about any errors
-func New(path string, threshold, minTimeDiff int, checkEvery time.Duration, errors chan error) (*Heap, error) {
+func New(cfg Config, errors chan error) (*Heap, error) {
 	heap := Heap{
-		path,
-		threshold,
-		minTimeDiff,
-		checkEvery,
-		int64(0),
-		errors,
+		cfg:      cfg,
+		lastUnix: int64(0),
+		Errors:   errors,
 	}
 	return &heap, nil
 }
@@ -44,13 +46,14 @@ func (heap Heap) logError(err error) {
 // Run runs the trigger. encountered errors go to the configured channel (if any).
 // you probably want to run this in a new goroutine.
 func (heap Heap) Run() {
-	tick := time.NewTicker(heap.checkEvery)
+	cfg := heap.cfg
+	tick := time.NewTicker(cfg.CheckEvery)
 	m := &runtime.MemStats{}
 	for ts := range tick.C {
 		runtime.ReadMemStats(m)
 		unix := ts.Unix()
-		if m.Sys >= uint64(heap.threshold) && unix >= heap.lastUnix+int64(heap.minTimeDiff) {
-			f, err := os.Create(fmt.Sprintf("%s/%d.profile-heap", heap.path, unix))
+		if m.Sys >= uint64(cfg.Threshold) && unix >= heap.lastUnix+int64(cfg.MinTimeDiff) {
+			f, err := os.Create(fmt.Sprintf("%s/%d.profile-heap", cfg.Path, unix))
 			if err != nil {
 				heap.logError(err)
 				continue
