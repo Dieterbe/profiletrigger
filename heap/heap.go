@@ -7,7 +7,7 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"github.com/prometheus/procfs"
+	"github.com/Dieterbe/profiletrigger/procfs"
 )
 
 // Heap will check every checkEvery for memory obtained from the system, by the process
