@@ -33,14 +33,16 @@ type Config struct {
 
 // New creates a new Heap trigger. use a nil channel if you don't care about any errors
 func New(cfg Config, errors chan error) (*Heap, error) {
-	proc, err := procfs.Self()
-	if err != nil {
-		return nil, err
-	}
 	heap := Heap{
 		Errors: errors,
 		cfg:    cfg,
-		proc:   proc,
+	}
+	if cfg.ThreshRSS != 0 {
+		proc, err := procfs.Self()
+		if err != nil {
+			return nil, err
+		}
+		heap.proc = proc
 	}
 
 	return &heap, nil
@@ -86,7 +88,7 @@ func (heap Heap) shouldProfile(ts time.Time) bool {
 	}
 
 	// Check RSS.
-	if cfg.ThreshRSS != 0 && heap.proc != nil {
+	if cfg.ThreshRSS != 0 {
 		stat, err := heap.proc.NewStat()
 		if err != nil {
 			heap.logError(err)
