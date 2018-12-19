@@ -12,11 +12,10 @@ import (
 
 // Heap will check memory at the requested interval and report profiles if thresholds are breached.
 // See Config for configuration documentation
-// If non-nil, any runtime errors are sent on the Errors channel
+// If non-nil, any runtime errors are sent on the errors channel
 type Heap struct {
-	Errors chan error
-
 	cfg           Config
+	errors        chan error
 	lastTriggered time.Time
 	proc          procfs.Proc
 }
@@ -34,8 +33,8 @@ type Config struct {
 // New creates a new Heap trigger. use a nil channel if you don't care about any errors
 func New(cfg Config, errors chan error) (*Heap, error) {
 	heap := Heap{
-		Errors: errors,
 		cfg:    cfg,
+		errors: errors,
 	}
 	if cfg.ThreshRSS != 0 {
 		proc, err := procfs.Self()
@@ -49,12 +48,12 @@ func New(cfg Config, errors chan error) (*Heap, error) {
 }
 
 func (heap Heap) logError(err error) {
-	if heap.Errors != nil {
-		heap.Errors <- err
+	if heap.errors != nil {
+		heap.errors <- err
 	}
 }
 
-// Run runs the trigger. any encountered errors go to the configured Errors channel.
+// Run runs the trigger. any encountered errors go to the configured errors channel.
 // you probably want to run this in a new goroutine.
 func (heap Heap) Run() {
 	cfg := heap.cfg
