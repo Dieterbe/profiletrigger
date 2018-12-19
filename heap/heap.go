@@ -10,40 +10,37 @@ import (
 	"github.com/Dieterbe/profiletrigger/procfs"
 )
 
-// Heap will check every checkEvery for memory obtained from the system, by the process
-// - using the metric Sys at https://golang.org/pkg/runtime/#MemStats -
-// whether it reached or exceeds the threshold and take a memory profile to the path directory,
-// but no more often than every minTimeDiff seconds
-// any errors will be sent to the errors channel
+// Heap will check memory at the requested interval and report profiles if thresholds are breached.
+// See Config for configuration documentation
+// If non-nil, any runtime errors are sent on the Errors channel
 type Heap struct {
+	Errors chan error
+
 	cfg           Config
 	lastTriggered time.Time
-	Errors        chan error
-
-	proc *procfs.Proc
+	proc          procfs.Proc
 }
 
-// Config is the config for triggering profile
+// Config is the config for triggering heap profiles
+// It uses HeapAlloc from https://golang.org/pkg/runtime/#MemStats as well as RSS memory usage
 type Config struct {
-	Path           string
-	AllocThreshold int
-	RSSThreshold   int
-	MinTimeDiff    time.Duration
-	CheckEvery     time.Duration
+	Path        string        // directory to write profiles to.
+	ThreshAlloc int           // number of bytes to compare MemStats.HeapAlloc to
+	ThreshRSS   int           // number of bytes to compare RSS usage to
+	MinTimeDiff time.Duration // report no more often than this
+	CheckEvery  time.Duration // check both thresholds at this rate
 }
 
 // New creates a new Heap trigger. use a nil channel if you don't care about any errors
 func New(cfg Config, errors chan error) (*Heap, error) {
-	heap := Heap{
-		cfg:           cfg,
-		lastTriggered: time.Now().Add(-cfg.MinTimeDiff),
-		Errors:        errors,
-	}
 	proc, err := procfs.Self()
 	if err != nil {
-		heap.logError(err)
-	} else {
-		heap.proc = &proc
+		return nil, err
+	}
+	heap := Heap{
+		Errors: errors,
+		cfg:    cfg,
+		proc:   proc,
 	}
 
 	return &heap, nil
@@ -51,14 +48,11 @@ func New(cfg Config, errors chan error) (*Heap, error) {
 
 func (heap Heap) logError(err error) {
 	if heap.Errors != nil {
-		select {
-		case heap.Errors <- err:
-		default:
-		}
+		heap.Errors <- err
 	}
 }
 
-// Run runs the trigger. encountered errors go to the configured channel (if any).
+// Run runs the trigger. any encountered errors go to the configured Errors channel.
 // you probably want to run this in a new goroutine.
 func (heap Heap) Run() {
 	cfg := heap.cfg
@@ -92,21 +86,21 @@ func (heap Heap) shouldProfile(ts time.Time) bool {
 	}
 
 	// Check RSS.
-	if cfg.RSSThreshold != 0 && heap.proc != nil {
+	if cfg.ThreshRSS != 0 && heap.proc != nil {
 		stat, err := heap.proc.NewStat()
 		if err != nil {
 			heap.logError(err)
-		} else if stat.ResidentMemory() >= cfg.RSSThreshold {
+		} else if stat.ResidentMemory() >= cfg.ThreshRSS {
 			return true
 		}
 	}
 
 	// Check HeapAlloc
-	if cfg.AllocThreshold != 0 {
+	if cfg.ThreshAlloc != 0 {
 		m := &runtime.MemStats{}
 		runtime.ReadMemStats(m)
 
-		if m.HeapAlloc >= uint64(cfg.AllocThreshold) {
+		if m.HeapAlloc >= uint64(cfg.ThreshAlloc) {
 			return true
 		}
 	}
