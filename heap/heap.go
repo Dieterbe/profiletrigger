@@ -24,7 +24,7 @@ type Heap struct {
 // It uses HeapAlloc from https://golang.org/pkg/runtime/#MemStats as well as RSS memory usage
 type Config struct {
 	Path        string        // directory to write profiles to.
-	ThreshAlloc int           // number of bytes to compare MemStats.HeapAlloc to
+	ThreshHeap  int           // number of bytes to compare MemStats.HeapAlloc (bytes of allocated heap objects) to
 	ThreshRSS   int           // number of bytes to compare RSS usage to
 	MinTimeDiff time.Duration // report no more often than this
 	CheckEvery  time.Duration // check both thresholds at this rate
@@ -60,21 +60,22 @@ func (heap Heap) Run() {
 	tick := time.NewTicker(cfg.CheckEvery)
 
 	for ts := range tick.C {
-		if heap.shouldProfile(ts) {
-			f, err := os.Create(fmt.Sprintf("%s/%d.profile-heap", cfg.Path, ts.Unix()))
-			if err != nil {
-				heap.logError(err)
-				continue
-			}
-			err = pprof.WriteHeapProfile(f)
-			if err != nil {
-				heap.logError(err)
-			}
-			heap.lastTriggered = ts
-			err = f.Close()
-			if err != nil {
-				heap.logError(err)
-			}
+		if !heap.shouldProfile(ts) {
+			continue
+		}
+		f, err := os.Create(fmt.Sprintf("%s/%d.profile-heap", cfg.Path, ts.Unix()))
+		if err != nil {
+			heap.logError(err)
+			continue
+		}
+		err = pprof.WriteHeapProfile(f)
+		if err != nil {
+			heap.logError(err)
+		}
+		heap.lastTriggered = ts
+		err = f.Close()
+		if err != nil {
+			heap.logError(err)
 		}
 	}
 }
@@ -97,11 +98,11 @@ func (heap Heap) shouldProfile(ts time.Time) bool {
 	}
 
 	// Check HeapAlloc
-	if cfg.ThreshAlloc != 0 {
+	if cfg.ThreshHeap != 0 {
 		m := &runtime.MemStats{}
 		runtime.ReadMemStats(m)
 
-		if m.HeapAlloc >= uint64(cfg.ThreshAlloc) {
+		if m.HeapAlloc >= uint64(cfg.ThreshHeap) {
 			return true
 		}
 	}

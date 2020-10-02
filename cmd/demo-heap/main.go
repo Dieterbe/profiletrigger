@@ -45,7 +45,7 @@ func main() {
 	errors := make(chan error)
 	trigger, _ := heap.New(heap.Config{
 		Path:        ".",
-		ThreshAlloc: 10000000,
+		ThreshHeap:  10000000,
 		MinTimeDiff: 60 * time.Second,
 		CheckEvery:  time.Second,
 	}, errors)
